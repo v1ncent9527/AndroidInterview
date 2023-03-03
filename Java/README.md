@@ -561,6 +561,7 @@ request2 is handle by ConcreteHandler2
 ![image](https://raw.githubusercontent.com/v1ncent9527/AndroidInterview/main/Snapshot/observer.webp)
 
 **实现**
+
 天气数据布告板会在天气信息发生改变时更新其内容，布告板有多个，并且在将来会继续增加。
 
 ![image](https://raw.githubusercontent.com/v1ncent9527/AndroidInterview/main/Snapshot/observer_weather.webp)
