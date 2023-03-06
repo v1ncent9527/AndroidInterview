@@ -893,3 +893,383 @@ Class clz = String.class;
 String str = new String("Hello");
 Class clz = str.getClass();
 ```
+
+## 4、泛型
+
+泛型是 Java SE1.5 的新特性，泛型的本质是**参数化类型**，也就是说所操的数据类型被指定为一个参数。这种参数类型可以用在类、接口和方法的创建中，分别称为泛型类、泛型接口、泛型方法。 Java 语言引入泛型的好处是安全简单。
+
+泛型有三种使用方式，分别为：**泛型类**、**泛型接口**、**泛型方法**
+
+### 泛型类
+
+泛型类型用于类的定义中，被称为泛型类。通过泛型可以完成对一组类的操作对外开放相同的接口。最典型的就是各种容器类，如：List、Set、Map。
+
+```java
+//此处T可以随便写为任意标识，常见的如T、E、K、V等形式的参数常用于表示泛型
+//在实例化泛型类时，必须指定T的具体类型
+public class Generic<T>{
+    //key这个成员变量的类型为T,T的类型由外部指定
+    private T key;
+
+    public Generic(T key) { //泛型构造方法形参key的类型也为T，T的类型由外部指定
+        this.key = key;
+    }
+
+    public T getKey(){ //泛型方法getKey的返回值类型为T，T的类型由外部指定
+        return key;
+    }
+}
+```
+
+```java
+复制代码
+//泛型的类型参数只能是类类型（包括自定义类），不能是简单类型
+//传入的实参类型需与泛型的类型参数类型相同，即为Integer.
+Generic<Integer> genericInteger = new Generic<Integer>(123456);
+
+//传入的实参类型需与泛型的类型参数类型相同，即为String.
+Generic<String> genericString = new Generic<String>("key_vlaue");
+Log.d("泛型测试","key is " + genericInteger.getKey());  //泛型测试: key is 123456
+Log.d("泛型测试","key is " + genericString.getKey());  //泛型测试: key is key_vlaue
+```
+
+定义的泛型类，就一定要传入泛型类型实参么？并不是这样，在使用泛型的时候如果传入泛型实参，则会根据传入的泛型实参做相应的限制，此时泛型才会起到本应起到的限制作用。如果不传入泛型类型实参的话，在泛型类中使用泛型的方法或成员变量定义的类型可以为任何的类型。
+
+```java
+Generic generic = new Generic("111111");
+Generic generic1 = new Generic(4444);
+Generic generic2 = new Generic(55.55);
+Generic generic3 = new Generic(false);
+
+Log.d("泛型测试","key is " + generic.getKey()); //key is 111111
+Log.d("泛型测试","key is " + generic1.getKey()); //key is 4444
+Log.d("泛型测试","key is " + generic2.getKey()); //key is 55.55
+Log.d("泛型测试","key is " + generic3.getKey()); //key is false
+
+```
+
+#### 注意
+
+- 泛型的类型参数只能是类类型，不能是简单类型。
+- 不能对确切的泛型类型使用 instanceof 操作。如下面的操作是非法的，编译时会出错。
+  > if(ex_num instanceof Generic<Number>){ }
+
+### 泛型接口
+
+泛型接口与泛型类的定义及使用基本相同。泛型接口常被用在各种类的生产器中，可以看一个例子：
+
+```java
+//定义一个泛型接口
+public interface Generator<T> {
+    public T next();
+}
+```
+
+当实现泛型接口的类，未传入泛型实参时：
+
+```java
+/**
+ * 未传入泛型实参时，与泛型类的定义相同，在声明类的时候，需将泛型的声明也一起加到类中
+ * 即：class FruitGenerator<T> implements Generator<T>{
+ * 如果不声明泛型，如：class FruitGenerator implements Generator<T>，编译器会报错："Unknown class"
+ */
+class FruitGenerator<T> implements Generator<T>{
+    @Override
+    public T next() {
+        return null;
+    }
+}
+```
+
+当实现泛型接口的类，传入泛型实参时：
+
+```java
+/**
+ * 传入泛型实参时：
+ * 定义一个生产器实现这个接口,虽然我们只创建了一个泛型接口Generator<T>
+ * 但是我们可以为T传入无数个实参，形成无数种类型的Generator接口。
+ * 在实现类实现泛型接口时，如已将泛型类型传入实参类型，则所有使用泛型的地方都要替换成传入的实参类型
+ * 即：Generator<T>，public T next();中的的T都要替换成传入的String类型。
+ */
+public class FruitGenerator implements Generator<String> {
+
+    private String[] fruits = new String[]{"Apple", "Banana", "Pear"};
+
+    @Override
+    public String next() {
+        Random rand = new Random();
+        return fruits[rand.nextInt(3)];
+    }
+}
+```
+
+### 泛型通配符
+
+```java
+public void showKeyValue1(Generic<Number> obj){
+    Log.d("泛型测试","key value is " + obj.getKey());
+}
+```
+
+```java
+Generic<Integer> gInteger = new Generic<Integer>(123);
+Generic<Number> gNumber = new Generic<Number>(456);
+
+showKeyValue(gNumber);
+
+// showKeyValue这个方法编译器会为我们报错：Generic<java.lang.Integer>
+// cannot be applied to Generic<java.lang.Number>
+// showKeyValue(gInteger);
+```
+
+我们可以将上面的方法改一下：
+
+```java
+public void showKeyValue1(Generic<?> obj){
+    Log.d("泛型测试","key value is " + obj.getKey());
+}
+```
+
+类型通配符一般是使用？代替具体的类型实参，注意了，此处’？’是类型实参，而不是类型形参 。重要说三遍！此处’？’是类型实参，而不是类型形参 ！ 此处’？’是类型实参，而不是类型形参 ！再直白点的意思就是，此处的？和 Number、String、Integer 一样都是一种实际的类型，可以把？看成所有类型的父类。是一种真实的类型。
+
+可以解决当具体类型不确定的时候，这个通配符就是 ? ；当操作类型时，不需要使用类型的具体功能时，只使用 Object 类中的功能。那么可以用 ? 通配符来表未知类型。
+
+### 泛型方法
+
+#### 泛型方法的基本用法
+
+```java
+public class GenericTest {
+   //这个类是个泛型类，在上面已经介绍过
+   public class Generic<T>{
+        private T key;
+
+        public Generic(T key) {
+            this.key = key;
+        }
+
+        //我想说的其实是这个，虽然在方法中使用了泛型，但是这并不是一个泛型方法。
+        //这只是类中一个普通的成员方法，只不过他的返回值是在声明泛型类已经声明过的泛型。
+        //所以在这个方法中才可以继续使用 T 这个泛型。
+        public T getKey(){
+            return key;
+        }
+
+        /**
+         * 这个方法显然是有问题的，在编译器会给我们提示这样的错误信息"cannot reslove symbol E"
+         * 因为在类的声明中并未声明泛型E，所以在使用E做形参和返回值类型时，编译器会无法识别。
+        public E setKey(E key){
+             this.key = keu
+        }
+        */
+    }
+
+    /**
+     * 这才是一个真正的泛型方法。
+     * 首先在public与返回值之间的<T>必不可少，这表明这是一个泛型方法，并且声明了一个泛型T
+     * 这个T可以出现在这个泛型方法的任意位置.
+     * 泛型的数量也可以为任意多个
+     *    如：public <T,K> K showKeyName(Generic<T> container){
+     *        ...
+     *        }
+     */
+    public <T> T showKeyName(Generic<T> container){
+        System.out.println("container key :" + container.getKey());
+        //当然这个例子举的不太合适，只是为了说明泛型方法的特性。
+        T test = container.getKey();
+        return test;
+    }
+
+    //这也不是一个泛型方法，这就是一个普通的方法，只是使用了Generic<Number>这个泛型类做形参而已。
+    public void showKeyValue1(Generic<Number> obj){
+        Log.d("泛型测试","key value is " + obj.getKey());
+    }
+
+    //这也不是一个泛型方法，这也是一个普通的方法，只不过使用了泛型通配符?
+    //同时这也印证了泛型通配符章节所描述的，?是一种类型实参，可以看做为Number等所有类的父类
+    public void showKeyValue2(Generic<?> obj){
+        Log.d("泛型测试","key value is " + obj.getKey());
+    }
+
+     /**
+     * 这个方法是有问题的，编译器会为我们提示错误信息："UnKnown class 'E' "
+     * 虽然我们声明了<T>,也表明了这是一个可以处理泛型的类型的泛型方法。
+     * 但是只声明了泛型类型T，并未声明泛型类型E，因此编译器并不知道该如何处理E这个类型。
+    public <T> T showKeyName(Generic<E> container){
+        ...
+    }
+    */
+
+    /**
+     * 这个方法也是有问题的，编译器会为我们提示错误信息："UnKnown class 'T' "
+     * 对于编译器来说T这个类型并未项目中声明过，因此编译也不知道该如何编译这个类。
+     * 所以这也不是一个正确的泛型方法声明。
+    public void showkey(T genericObj){
+
+    }
+    */
+
+    public static void main(String[] args) {
+
+
+    }
+}
+```
+
+#### 泛型方法与可变参数
+
+```java
+public <T> void printMsg( T... args){
+    for(T t : args){
+        Log.d("泛型测试","t is " + t);
+    }
+}
+
+printMsg("111",222,"aaaa","2323.4",55.55);
+```
+
+### 泛型上下边界
+
+在使用泛型的时候，我们还可以为传入的泛型类型实参进行上下边界的限制，如：类型实参只准传入某种类型的父类或某种类型的子类。
+
+为泛型添加上边界，即传入的类型实参必须是指定类型的子类型
+
+```java
+public void showKeyValue1(Generic<? extends Number> obj){
+    Log.d("泛型测试","key value is " + obj.getKey());
+}
+
+Generic<String> generic1 = new Generic<String>("11111");
+Generic<Integer> generic2 = new Generic<Integer>(2222);
+Generic<Float> generic3 = new Generic<Float>(2.4f);
+Generic<Double> generic4 = new Generic<Double>(2.56);
+
+//这一行代码编译器会提示错误，因为String类型并不是Number类型的子类
+//showKeyValue1(generic1);
+
+showKeyValue1(generic2);
+showKeyValue1(generic3);
+showKeyValue1(generic4);
+```
+
+如果我们把泛型类的定义也改一下:
+
+```java
+public class Generic<T extends Number>{
+    private T key;
+
+    public Generic(T key) {
+        this.key = key;
+    }
+
+    public T getKey(){
+        return key;
+    }
+}
+
+//这一行代码也会报错，因为String不是Number的子类
+Generic<String> generic1 = new Generic<String>("11111");
+```
+
+再来一个泛型方法的例子：
+
+```java
+//在泛型方法中添加上下边界限制的时候，必须在权限声明与返回值之间的<T>上添加上下边界，即在泛型声明的时候添加
+//public <T> T showKeyName(Generic<T extends Number> container)，编译器会报错："Unexpected bound"
+public <T extends Number> T showKeyName(Generic<T> container){
+    System.out.println("container key :" + container.getKey());
+    T test = container.getKey();
+    return test;
+}
+```
+
+通过上面的两个例子可以看出：泛型的上下边界添加，必须与泛型的声明在一起 。
+
+## 5.注解
+
+注解相当于一种标记，在程序中加了注解就等于为程序打上了某种标记。程序可以利用 ava 的**反射机制**来了解你的类及各种元素上有无何种标记，针对不同的标记，就去做相应的事件。标记可以加在包，类，字段，方法，方法的参数以及局部变量上。
+
+## 6、IO
+
+![image](https://raw.githubusercontent.com/v1ncent9527/AndroidInterview/main/Snapshot/iostream.webp)
+
+### 分类
+
+虽然 java IO 类库庞大，但总体来说其框架还是很清楚的。从是读媒介还是写媒介的维度看，Java IO 可以分为：
+
+输入流：InputStream 和 Reader
+输出流：OutputStream 和 Writer
+而从其处理流的类型的维度上看，Java IO 又可以分为：
+
+字节流：InputStream 和 OutputStream
+字符流：Reader 和 Writer
+下面这幅图就清晰的描述了 JavaIO 的分类：
+
+|              | 字节流       | 字符流 |
+| ------------ | ------------ | ------ |
+| 输入流（读） | InputStream  | Reader |
+| 输出流（写） | OutputStream | Writer |
+
+我们的程序需要通过 InputStream 或 Reader 从数据源读取数据，然后用 OutputStream 或者 Writer 将数据写入到目标媒介中。其中，InputStream 和 Reader 与数据源相关联，OutputStream 和 writer 与目标媒介相关联。
+
+### 字节流
+
+用字节流写文件
+
+```java
+public static void writeByteToFile() throws IOException{
+    String hello= new String( "hello word!");
+     byte[] byteArray= hello.getBytes();
+    File file= new File( "d:/test.txt");
+     //因为是用字节流来写媒介，所以对应的是OutputStream
+     //又因为媒介对象是文件，所以用到子类是FileOutputStream
+    OutputStream os= new FileOutputStream( file);
+     os.write( byteArray);
+     os.close();
+}
+```
+
+用字节流读文件
+
+```java
+public static void readByteFromFile() throws IOException{
+    File file= new File( "d:/test.txt");
+     byte[] byteArray= new byte[( int) file.length()];
+     //因为是用字节流来读媒介，所以对应的是InputStream
+     //又因为媒介对象是文件，所以用到子类是FileInputStream
+    InputStream is= new FileInputStream( file);
+     int size= is.read( byteArray);
+    System. out.println( "大小:"+size +";内容:" +new String(byteArray));
+     is.close();
+}
+```
+
+### 字符流
+
+字符流读文件
+
+```java
+public static void writeCharToFile() throws IOException{
+    String hello= new String( "hello word!");
+    File file= new File( "d:/test.txt");
+    //因为是用字符流来读媒介，所以对应的是Writer，又因为媒介对象是文件，所以用到子类是FileWriter
+    Writer os= new FileWriter( file);
+    os.write( hello);
+    os.close();
+}
+```
+
+用字符流写文件
+
+```java
+public static void readCharFromFile() throws IOException{
+    File file= new File( "d:/test.txt");
+    //因为是用字符流来读媒介，所以对应的是Reader
+    //又因为媒介对象是文件，所以用到子类是FileReader
+    Reader reader= new FileReader( file);
+    char [] byteArray= new char[( int) file.length()];
+    int size= reader.read( byteArray);
+    System. out.println( "大小:"+size +";内容:" +new String(byteArray));
+    reader.close();
+}
+```
