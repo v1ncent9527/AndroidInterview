@@ -678,7 +678,7 @@ StatisticsDisplay.update: 1.0 1.0 1.0
 - RxJava 的观察者模式（各种 BUS）
 - AIDL 代理模式
 
-## 集合框架
+## 2、集合框架
 
 ![image](https://raw.githubusercontent.com/v1ncent9527/AndroidInterview/main/Snapshot/java_collection_structure.webp)
 
@@ -850,3 +850,46 @@ LinkedHashMap：在需要输出的顺序和输入的顺序相同的情况下。
 - HashMap 默认初始化数组的大小为 16，HashTable 为 11，前者扩容时，扩大两倍，后者扩大两倍+1；
 
 - HashMap 需要重新计算 hash 值，而 HashTable 直接使用对象的 hashCode
+
+## 3、反射
+
+一般情况下，我们使用某个类时必定知道它是什么类，是用来做什么的。于是我们直接对这个类进行实例化，之后使用这个类对象进行操作。
+
+```java
+Apple apple = new Apple(); //直接初始化，「正射」
+apple.setPrice(4);
+```
+
+```java
+Class clz = Class.forName("com.v1ncent.reflect.Apple");
+Method method = clz.getMethod("setPrice", int.class);
+Constructor constructor = clz.getConstructor();
+Object object = constructor.newInstance();
+method.invoke(object, 4);
+```
+
+#### 获取反射中的 Class 对象
+
+在反射中，要获取一个类或调用一个类的方法，我们首先需要获取到该类的 Class 对象。
+
+在 Java API 中，获取 Class 类对象有三种方法：
+
+**第一种，使用 Class.forName 静态方法**。当你知道该类的全路径名时，你可以使用该方法获取 Class 类对象。
+
+```java
+Class clz = Class.forName("java.lang.String");
+
+```
+
+**第二种，使用 .class 方法。**
+
+```java
+Class clz = String.class;
+```
+
+**第三种，使用类对象的 getClass() 方法。**
+
+```java
+String str = new String("Hello");
+Class clz = str.getClass();
+```
