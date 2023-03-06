@@ -677,3 +677,179 @@ StatisticsDisplay.update: 1.0 1.0 1.0
 - Okhttp 内部使用了责任链模式来完成每个 Interceptor 拦截器的调用
 - RxJava 的观察者模式（各种 BUS）
 - AIDL 代理模式
+
+## 集合框架
+
+![image](https://raw.githubusercontent.com/v1ncent9527/AndroidInterview/main/Snapshot/java_collection_structure.webp)
+
+![image](https://raw.githubusercontent.com/v1ncent9527/AndroidInterview/main/Snapshot/java_collection_structure2.webp)
+
+| 名称 | 描述                                                         |
+| ---- | ------------------------------------------------------------ |
+| List | 有序、可重复；索引查询速度快；插入、删除伴随数据移动，速度慢 |
+| Set  | 无序，不可重复                                               |
+| Map  | 键值对，键唯一，值多个                                       |
+
+### Set 和 List 对比
+
+Set：检索元素效率低下，删除和插入效率高，插入和删除不会引起元素位置改变。
+
+List：和数组类似，List 可以动态增长，查找元素效率高，插入删除元素效率低，因为会引起其他元素位置改变。
+
+### 线程安全集合类与非线程安全集合类
+
+LinkedList、ArrayList、HashSet 是非线程安全的，Vector 是线程安全的;
+
+HashMap 是非线程安全的，HashTable 是线程安全的;
+
+StringBuilder 是非线程安全的，StringBuffer 是线程安的。
+
+### ArrayList 与 LinkedList 的区别和适用场景
+
+**_Arraylist_**：
+
+优点：ArrayList 是实现了基于动态数组的数据结构,因地址连续，一旦数据存储好了，查询操作效率会比较高（在内存里是连着放的）。
+
+缺点：因为地址连续，ArrayList 要移动数据,所以插入和删除操作效率比较低。
+
+**_LinkedList_**：
+
+优点：LinkedList 基于链表的数据结构，地址是任意的，其在开辟内存空间的时候不需要等一个连续的地址，对新增和删除操作 add 和 remove，LinedList 比较占优势。LikedList 适用于要头尾操作或插入指定位置的场景。
+
+缺点：因为 LinkedList 要移动指针,所以查询操作性能比较低。
+
+适用场景分析：
+
+当需要对数据进行对此访问的情况下选用 ArrayList，当要对数据进行多次增加删除修改时采用 LinkedList。
+
+### ArrayList 和 LinkedList 怎么动态扩容的吗？
+
+**_ArrayList_**:
+
+ArrayList 初始化大小是 10 （如果你知道你的 arrayList 会达到多少容量，可以在初始化的时候就指定，能节省扩容的性能开支） 扩容点规则是，新增的时候发现容量不够用了，就去扩容 扩容大小规则是，扩容后的大小= 原始大小+原始大小/2 + 1。（例如：原始大小是 10 ，扩容后的大小就是 10 + 5+1 = 16）
+
+**_LinkedList_**:
+
+linkedList 是一个双向链表，没有初始化大小，也没有扩容的机制，就是一直在前面或者后面新增就好。
+
+### HashMap
+
+数据结构：哈希表结构（链表散列：数组+链表）实现，结合数组和链表的优点。当链表长度超过 8 时，链表转换为红黑树
+
+#### HashMap 的 key 可以为 null 吗？
+
+HashMap 最多只允许一条记录的键为 null(多个会覆盖)，允许多条记录的值为 null
+
+#### HashMap 是线程安全的吗？
+
+HashMap 是线程不安全的。
+
+#### 如何保证 HashMap 线程安全？
+
+- 使用 Collections.synchronizedMap 方法，使 HashMap 具有线程安全的能力
+  Map m = Collections.synchronizedMap(new HashMap(...))
+
+```java
+Map m = Collections.synchronizedMap(new HashMap(...))
+
+```
+
+- 或者使用 ConcurrentHashMap，ConcurrentHashMap 是一个 Segment 数组， Segment 通过继承 ReentrantLock 来进行加锁，所以每次需要加锁的操作锁住的是一个 segment，这样只要保证每个 Segment 是线程安全的，也就实现了全局的线程安全
+
+#### 有几种方式遍历 HashMap？
+
+- Map.Entry
+
+```java
+Map<Integer , Integer> map = new HashMap<>();
+map.put(1, 3);
+map.put(2,4);
+Set<Map.Entry<Integer, Integer>> entries = map.entrySet();
+for (Map.Entry<Integer, Integer> entry : entries) {
+    System.out.println("key="+entry.getKey()+",value="+entry.getValue());
+}
+```
+
+- keySet
+
+```java
+Set<Integer> keySet = map.keySet();
+for (Integer key : keySet) {
+    System.out.println("key="+key+",value="+map.get(key));
+}
+```
+
+- values
+
+```java
+Collection<Integer> values = map.values();
+for (Integer value : values) {
+    System.out.println("value="+value);
+}
+```
+
+- Lambda 表达式
+
+```java
+map.forEach((key , value)->{
+ System.out.println("key="+key+",value="+value);
+});
+```
+
+#### 负载因子是多少？它有什么用
+
+一般来说，默认的负载系数(0.75)在时间和空间成本之间提供了一个很好的权衡。较高的值减少了空间开销，但增加了查找成本(反映在 HashMap 类的大多数操作中，包括 get 和 put)。在设置 map 的初始容量时，应考虑其期望的表项数及其负载因子，以尽量减少重哈希操作的次数。如果初始容量大于最大条目数除以负载因子，则不会发生重新哈希操作。
+
+#### jdk 1.7 和 jdk 1.8 HashMap 的区别？
+
+- jdk 1.7 由数组+链表组成，查找的时候，根据 hash 值我们能够快速定位到数组的具体下标，但是之后的话， 需要顺着链表一个个比较下去才能找到我们需要的，时间复杂度取决于链表的长度，为 O(n)。
+- jdk 1.8 数组+链表+红黑树 组成，为了降低这部分的开销，在 Java8 中， 当满足一定条件时，会将链表转换为红黑树，在这些位置进行查找的时候可以降低时间复杂度为 O(logN)。
+
+| 左对齐                   |                                                    JDK1.7 |                JDK1.8                |                           JDK1.8 的优势                            |
+| :----------------------- | --------------------------------------------------------: | :----------------------------------: | :----------------------------------------------------------------: |
+| 底层结构                 |                                                 数组+链表 |     数组+链表/红黑树(链表大于 8)     |            避免单条链表过长而影响查询效率，提高查询效率            |
+|  |
+| hash 值计算方式          |                      9 次扰动 = 4 次位运算 + 5 次异或运算 | 2 次扰动 = 1 次位运算 + 1 次异或运算 | 可以均匀地把之前的冲突的节点分散到新的桶（具体细节见下面扩容部分） |
+| 插入数据方式             | 头插法（先讲原位置的数据移到后 1 位，再插入数据到该位置） | 尾插法（直接插入到链表尾部/红黑树）  |                     解决多线程造成死循环地问题                     |
+|  |
+| 扩容后存储位置的计算方式 |                                        重新进行 hash 计算 |        原位置或原位置+旧容量         |                    省去了重新计算 hash 值的时间                    |
+|  |
+
+#### 链表转红黑树要满足什么条件？
+
+- 链表中的元素的个数为 8 个或超过 8 个
+- 当前数组的长度大于或等于 64 才会把链表转变为红黑树。
+
+#### HashMap 是如何扩容的？
+
+1.HashMap 的扩容指的就是数组的扩容， 因为数组占用的是连续内存空间，所以数组的扩容其实只能新开一个新的数组，然后把老数组上的元素转移到新数组上来，这样才是数组的扩容
+
+2.先新建一个 2 被数组大小的数组
+
+3.然后遍历老数组上的每一个位置，如果这个位置上是一个链表，就把这个链表上的元素转移到新数组上去
+
+4.在 jdk8 中，因为涉及到红黑树，这个其实比较复杂，jdk8 中其实还会用到一个双向链表来维护红黑树中的元素，所以 jdk8 中在转移某个位置上的元素时，会去判断如果这个位置是一个红黑树，那么会遍历该位置的双向链表，遍历双向链表统计哪些元素在扩容完之后还是原位置，哪些元素在扩容之后在新位置，这样遍历完双向链表后，就会得到两个子链表，一个放在原下标位置，一个放在新下标位置，如果原下标位置或新下标位置没有元素，则红黑树不用拆分，否则判断这两个子链表的长度，如果超过 8，则转成红黑树放到对应的位置，否则把单向链表放到对应的位置。
+
+5.元素转移完了之后，在把新数组对象赋值给 HashMap 的 table 属性，老数组会被回收到
+
+#### HashMap & TreeMap & LinkedHashMap 使用场景？
+
+一般情况下，使用最多的是 HashMap。
+
+HashMap：在 Map 中插入、删除和定位元素时；
+
+TreeMap：在需要按自然顺序或自定义顺序遍历键的情况下；
+
+LinkedHashMap：在需要输出的顺序和输入的顺序相同的情况下。
+
+#### HashMap 和 HashTable 有什么区别？
+
+- HashMap 是线程不安全的，HashTable 是线程安全的；
+
+- 由于线程安全，所以 HashTable 的效率比不上 HashMap；
+
+- HashMap 最多只允许一条记录的键为 null，允许多条记录的值为 null，而 HashTable 不允许；
+
+- HashMap 默认初始化数组的大小为 16，HashTable 为 11，前者扩容时，扩大两倍，后者扩大两倍+1；
+
+- HashMap 需要重新计算 hash 值，而 HashTable 直接使用对象的 hashCode
