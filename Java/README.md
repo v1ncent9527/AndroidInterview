@@ -1273,3 +1273,372 @@ public static void readCharFromFile() throws IOException{
     reader.close();
 }
 ```
+
+### 多线程
+
+![image](https://raw.githubusercontent.com/v1ncent9527/AndroidInterview/main/Snapshot/java-thread.webp)
+
+![image](https://raw.githubusercontent.com/v1ncent9527/AndroidInterview/main/Snapshot/java_thread_state.webp)
+
+- 新建状态:
+
+  使用 new 关键字和 Thread 类或其子类建立一个线程对象后，该线程对象就处于新建状态。它保持这个状态直到程序 start() 这个线程。
+
+- 就绪状态:
+  当线程对象调用了 start()方法之后，该线程就进入就绪状态。就绪状态的线程处于就绪队列中，要等待 JVM 里线程调度器的调度。
+
+- 运行状态:
+  如果就绪状态的线程获取 CPU 资源，就可以执行 run()，此时线程便处于运行状态。处于运行状态的线程最为复杂，它可以变为阻塞状态、就绪状态和死亡状态。
+
+- 阻塞状态:
+  如果一个线程执行了 sleep（睡眠）、suspend（挂起）等方法，失去所占用资源之后，该线程就从运行状态进入阻塞状态。在睡眠时间已到或获得设备资源后可以重新进入就绪状态。可以分为三种：
+
+  - 等待阻塞：运行状态中的线程执行 wait() 方法，使线程进入到等待阻塞状态。
+
+  - 同步阻塞：线程在获取 synchronized 同步锁失败(因为同步锁被其他线程占用)。
+
+  - 其他阻塞：通过调用线程的 sleep() 或 join() 发出了 I/O 请求时，线程就会进入到阻塞状态。当 sleep() 状态超时，join() 等待线程终止或超时，或者 I/O 处理完毕，线程重新转入就绪状态。
+
+- 死亡状态:
+  一个运行状态的线程完成任务或者其他终止条件发生时，该线程就切换到终止状态。
+
+#### 三种创建线程的方法
+
+- 通过实现 Runnable 接口；
+- 通过继承 Thread 类本身；
+- 通过 Callable 和 Future 创建线程。
+
+#### 线程池
+
+**线程池技术就是线程的重用技术，使用之前创建好的线程来执行当前任务，并提供了针对线程周期开销和资源冲突问题的解决方案。** 由于请求到达时线程已经存在，因此消除了线程创建过程导致的延迟，使应用程序得到更快的响应。
+
+- Java 提供了以 Executor 接口及其子接口 ExecutorService 和 ThreadPoolExecutor 为中心的执行器框架。通过使用 Executor，完成线程任务只需实现 Runnable 接口并将其交给执行器执行即可。
+- 为您封装好线程池，将您的编程任务侧重于具体任务的实现，而不是线程的实现机制。
+- 若要使用线程池，我们首先创建一个 ExecutorService 对象，然后向其传递一组任务。ThreadPoolExcutor 类则可以设置线程池初始化和最大的线程容量。
+
+![image](https://raw.githubusercontent.com/v1ncent9527/AndroidInterview/main/Snapshot/thread_pool.webp)
+
+**4 种线程池**
+
+| 名称                      | 方法                                                                                 |
+| ------------------------- | ------------------------------------------------------------------------------------ |
+| newFixedThreadPool(int)   | 创建具有固定的线程数的线程池，int 参数表示线程池内线程的数量                         |
+| newCachedThreadPool()     | 创建一个可缓存线程池，该线程池可灵活回收空闲线程。若无空闲线程，则新建线程处理任务。 |
+| newSingleThreadExecutor() | 创建一个单线程化的线程池，它只会用唯一的工作线程来执行任务                           |
+| newScheduledThreadPool    | 创建一个定长线程池，支持定时及周期性任务执行                                         |
+
+在固定线程池的情况下，如果执行器当前运行的所有线程，则挂起的任务将放在队列中，并在线程变为空闲时执行。
+
+**步骤**
+
+- 创建一个任务对象(实现 Runnable 接口)，用于执行具体的任务逻辑
+- 使用 Executors 创建线程池 ExecutorService
+- 将待执行的任务对象交给 ExecutorService 进行任务处理
+- 停掉 Executor 线程池
+
+```java
+//第一步： 创建一个任务对象(实现Runnable接口)，用于执行具体的任务逻辑 (Step 1)
+class Task implements Runnable  {
+    private String name;
+
+    public Task(String s) {
+        name = s;
+    }
+
+    // 打印任务名称并Sleep 1秒
+    // 整个处理流程执行5次
+    public void run() {
+        try{
+            for (int i = 0; i<=5; i++) {
+                if (i==0) {
+                    Date d = new Date();
+                    SimpleDateFormat ft = new SimpleDateFormat("hh:mm:ss");
+                    System.out.println("任务初始化" + name +" = " + ft.format(d));
+                    //第一次执行的时候，打印每一个任务的名称及初始化的时间
+                }
+                else{
+                    Date d = new Date();
+                    SimpleDateFormat ft = new SimpleDateFormat("hh:mm:ss");
+                    System.out.println("任务正在执行" + name +" = " + ft.format(d));
+                    // 打印每一个任务处理的执行时间
+                }
+                Thread.sleep(1000);
+            }
+            System.out.println("任务执行完成" + name);
+        }  catch(InterruptedException e)  {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+测试用例
+
+```java
+public class ThreadPoolTest {
+    // 线程池里面最大线程数量
+    static final int MAX_SIZE = 3;
+
+    public static void main (String[] args) {
+        // 创建5个任务
+        Runnable r1 = new Task("task 1");
+        Runnable r2 = new Task("task 2");
+        Runnable r3 = new Task("task 3");
+        Runnable r4 = new Task("task 4");
+        Runnable r5 = new Task("task 5");
+
+        // 第二步：创建一个固定线程数量的线程池，线程数为MAX_SIZE
+        ExecutorService pool = Executors.newFixedThreadPool(MAX_SIZE);
+
+        // 第三步：将待执行的任务对象交给ExecutorService进行任务处理
+        pool.execute(r1);
+        pool.execute(r2);
+        pool.execute(r3);
+        pool.execute(r4);
+        pool.execute(r5);
+
+        // 第四步：关闭线程池
+        pool.shutdown();
+    }
+}
+```
+
+执行结果
+
+```java
+任务初始化task 1 = 05:25:55
+任务初始化task 2 = 05:25:55
+任务初始化task 3 = 05:25:55
+任务正在执行task 3 = 05:25:56
+任务正在执行task 1 = 05:25:56
+任务正在执行task 2 = 05:25:56
+任务正在执行task 1 = 05:25:57
+任务正在执行task 3 = 05:25:57
+任务正在执行task 2 = 05:25:57
+任务正在执行task 3 = 05:25:58
+任务正在执行task 1 = 05:25:58
+任务正在执行task 2 = 05:25:58
+任务正在执行task 2 = 05:25:59
+任务正在执行task 3 = 05:25:59
+任务正在执行task 1 = 05:25:59
+任务正在执行task 1 = 05:26:00
+任务正在执行task 2 = 05:26:00
+任务正在执行task 3 = 05:26:00
+任务执行完成task 3
+任务执行完成task 2
+任务执行完成task 1
+任务初始化task 5 = 05:26:01
+任务初始化task 4 = 05:26:01
+任务正在执行task 4 = 05:26:02
+任务正在执行task 5 = 05:26:02
+任务正在执行task 4 = 05:26:03
+任务正在执行task 5 = 05:26:03
+任务正在执行task 5 = 05:26:04
+任务正在执行task 4 = 05:26:04
+任务正在执行task 4 = 05:26:05
+任务正在执行task 5 = 05:26:05
+任务正在执行task 4 = 05:26:06
+任务正在执行task 5 = 05:26:06
+任务执行完成task 4
+任务执行完成task 5
+```
+
+**使用线程池的注意事项与调优**
+
+- **死锁**: 虽然死锁可能发生在任何多线程程序中，但线程池引入了另一个死锁案例，其中所有执行线程都在等待队列中某个阻塞线程的执行结果，导致线程无法继续执行。
+- **线程泄漏** : 如果线程池中线程在任务完成时未正确返回，将发生线程泄漏问题。例如，某个线程引发异常并且池类没有捕获此异常，则线程将异常退出，从而线程池的大小将减小一个。如果这种情况重复多次，则线程池最终将变为空，没有线程可用于执行其他任务。
+- **线程频繁轮换**: 如果线程池大小非常大，则线程之间进行上下文切换会浪费很多时间。所以在系统资源允许的情况下，也不是线程池越大越好。
+
+#### Synchronized 和 Lock 的区别和使用场景
+
+|              | Synchronized                                                                     | Lock                                                                      |
+| ------------ | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| 存在层面     | Java 中的一个关键字，存在于 JVM 层面                                             | Java 中的一个接口                                                         |
+| 锁的释放条件 | 1. 获取锁的线程执行完同步代码后，自动释放；2. 线程发生异常时，JVM 会让线程释放锁 | 必须在 finally 关键字中释放锁，不然容易造成线程死锁                       |
+| 锁的获取     | 假设线程 A 获得锁，B 线程等待。如果 A 发生阻塞，那么 B 会一直等待                | 会分情况而定，Lock 中有尝试获取锁的方法，如果尝试获取到锁，则不用一直等待 |
+| 锁的状态     | 无法判断                                                                         | 可以判断                                                                  |
+| 锁的类型     | 可重入，不可中断，非公平锁                                                       | 可重入，可判断，可公平锁                                                  |
+| 锁的性能     | 适用于少量同步的情况下，性能开销比较大                                           | 适用于大量同步阶段                                                        |
+
+Lock（ReentrantLock）的底层实现主要是 Volatile + CAS（乐观锁），而 Synchronized 是一种悲观锁，比较耗性能。但是在 JDK1.6 以后对 Synchronized 的锁机制进行了优化，加入了偏向锁、轻量级锁、自旋锁、重量级锁，在并发量不大的情况下，性能可能优于 Lock 机制。所以建议一般请求并发量不大的情况下使用 synchronized 关键字。
+
+**在方法上使用 Synchronized**
+
+方法声明时使用，放在范围操作符之后,返回类型声明之前。即一次只能有一个线程进入该方法，其他线程要想在此时调用该方法，只能排队等候。
+
+```java
+private int number;
+public synchronized void numIncrease(){
+  number++;
+}
+```
+
+**在某个代码段使用 Synchronized**
+
+你也可以在某个代码块上使用 Synchronized 关键字，表示只能有一个线程进入某个代码段。
+
+```java
+public void numDecrease(Object num){
+    synchronized (num){
+        number++;
+    }
+}
+```
+
+**使用 Synchronized 锁住整个对象**
+
+synchronized 后面括号里是一对象，此时线程获得的是对象锁。
+
+```java
+public void test() {
+  synchronized (this) {
+    // ...
+  }
+}
+```
+
+**Lock 的使用**
+
+Lock 是一个接口，它主要由下面这几个方法
+
+```java
+public interface Lock {
+    void lock();
+    void lockInterruptibly() throws InterruptedException;
+    boolean tryLock();
+    boolean tryLock(long time, TimeUnit unit) throws InterruptedException;
+    void unlock();
+    Condition newCondition();
+}
+```
+
+**lock()**: lock 方法可能是平常使用最多的一个方法，就是用来获取锁。如果锁被其他线程获取，则进行等待。
+
+如果采用 Lock，必须主动去释放锁，并且在发生异常时，不会自动释放锁。
+
+```java
+Lock lock = ...;
+lock.lock();
+try{
+    //处理任务
+}catch(Exception ex){
+
+}finally{
+    lock.unlock();   //释放锁
+}
+```
+
+**tryLock()** ：方法是有返回值的，它表示用来尝试获取锁，如果获取成功，则返回 true，如果获取失败（即锁已被其他线程获取），则返回 false，也就说这个方法无论如何都会立即返回。在拿不到锁时不会一直在那等待。
+
+**tryLock(long time, TimeUnit unit)** 方法和 tryLock()方法是类似的，只不过区别在于这个方法在拿不到锁时会等待一定的时间，在时间期限之内如果还拿不到锁，就返回 false。如果如果一开始拿到锁或者在等待期间内拿到了锁，则返回 true。
+
+```java
+Lock lock = ...;
+if(lock.tryLock()) {
+     try{
+         //处理任务
+     }catch(Exception ex){
+
+     }finally{
+         lock.unlock();   //释放锁
+     }
+}else {
+    //如果不能获取锁，则直接做其他事情
+}
+```
+
+**lockInterruptibly()** : 此方法比较特殊，当通过这个方法去获取锁时，如果线程正在等待获取锁，则这个线程能够响应中断，即中断线程的等待状态。也就是说，当两个线程同时通过 lock.lockInterruptibly() 想获取某个锁时，假若此时线程 A 获取到了锁，而线程 B 只有在等待，那么对线程 B 调用 threadB.interrupt() 方法能够中断线程 B 的等待过程。
+
+由于 lockInterruptibly() 的声明中抛出了异常，所以 lock.lockInterruptibly() 必须放在 try 块中或者在调用 lockInterruptibly() 的方法外声明抛出 InterruptedException。一般形式如下：
+
+```java
+public void method() throws InterruptedException {
+    lock.lockInterruptibly();
+    try {
+     //.....
+    }
+    finally {
+        lock.unlock();
+    }
+}
+```
+
+一般来说，使用 Lock 必须在 try{}catch{}块中进行，并且将释放锁的操作放在 finally 块中进行，以保证锁一定被被释放，防止死锁的发生。
+
+> 注意，当一个线程获取了锁之后，是不会被 interrupt()方法中断的。interrupt()方法不能中断正在运行过程中的线程，只能中断阻塞过程中的线程。因此当通过 lockInterruptibly()方法获取某个锁时，如果不能获取到，只有进行等待的情况下，是可以响应中断的。而用 synchronized 修饰的话，当一个线程处于等待某个锁的状态，是无法被中断的，只有一直等待下去。
+
+#### 死锁
+
+当线程 A 持有独占锁 a，并尝试去获取独占锁 b 的同时，线程 B 持有独占锁 b，并尝试获取独占锁 a 的情况下，就会发生 AB 两个线程由于互相持有对方需要的锁，而发生的阻塞现象，我们称为死锁。
+
+```java
+public class DeadLockDemo {
+
+    public static void main(String[] args) {
+        // 线程a
+        Thread td1 = new Thread(new Runnable() {
+            public void run() {
+                DeadLockDemo.method1();
+            }
+        });
+        // 线程b
+        Thread td2 = new Thread(new Runnable() {
+            public void run() {
+                DeadLockDemo.method2();
+            }
+        });
+
+        td1.start();
+        td2.start();
+    }
+
+    public static void method1() {
+        synchronized (String.class) {
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            System.out.println("线程a尝试获取integer.class");
+            synchronized (Integer.class) {
+
+            }
+        }
+    }
+
+    public static void method2() {
+        synchronized (Integer.class) {
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            System.out.println("线程b尝试获取String.class");
+            synchronized (String.class) {
+
+            }
+        }
+    }
+}
+```
+
+**造成死锁的四个条件：**
+
+- 互斥条件：一个资源每次只能被一个线程使用。
+- 请求与保持条件：一个线程因请求资源而阻塞时，对已获得的资源保持不放。
+- 不剥夺条件：线程已获得的资源，在未使用完之前，不能强行剥夺。
+- 循环等待条件：若干线程之间形成一种头尾相接的循环等待资源关系。
+
+#### 线程阻塞
+
+为了解决对共享存储区的访问冲突，Java 引入了同步机制，现在让我们来考察多个线程对共享资源的访问，显然同步机制已经不够了，因为在任意时刻所要求的资源不一定已经准备好了被访问，反过来，同一时刻准备好了的资源也可能不止一个。为了解决这种情况下的访问控制问题，Java 引入了对阻塞机制的支持.
+
+阻塞指的是暂停一个线程的执行以等待某个条件发生（如某资源就绪），学过操作系统的同学对它一定已经很熟悉了。Java 提供了大量方法来支持阻塞，下面让我们逐一分析。
+
+**sleep()** 方法：sleep() 允许 指定以毫秒为单位的一段时间作为参数，它使得线程在指定的时间内进入阻塞状态，不能得到 CPU 时间，指定的时间一过，线程重新进入可执行状态。 典型地，sleep() 被用在等待某个资源就绪的情形：测试发现条件不满足后，让线程阻塞一段时间后重新测试，直到条件满足为止。
+
+**suspend()** 和 **resume()** 方法：两个方法配套使用，suspend()使得线程进入阻塞状态，并且不会自动恢复，必须其对应的 resume() 被调用，才能使得线程重新进入可执行状态。典型地，suspend() 和 resume() 被用在等待另一个线程产生的结果的情形：测试发现结果还没有产生后，让线程阻塞，另一个线程产生了结果后，调用 resume() 使其恢复。
+
+**yield()** 方法：yield() 使得线程放弃当前分得的 CPU 时间，但是不使线程阻塞，即线程仍处于可执行状态，随时可能再次分得 CPU 时间。调用 yield() 的效果等价于调度程序认为该线程已执行了足够的时间从而转到另一个线程。
+
+**wait()** 和 **notify()** 方法：两个方法配套使用，wait() 使得线程进入阻塞状态，它有两种形式，一种允许指定以毫秒为单位的一段时间作为参数，另一种没有参数，前者当对应的 notify() 被调用或者超出指定时间时线程重新进入可执行状态，后者则必须对应的 notify() 被调用。初看起来它们与 suspend() 和 resume() 方法对没有什么分别，但是事实上它们是截然不同的。区别的核心在于，前面叙述的所有方法，阻塞时都不会释放占用的锁（如果占用了的话），而这一对方法则相反。
