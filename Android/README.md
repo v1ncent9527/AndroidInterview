@@ -1,6 +1,6 @@
 # Android 面试题
 
-## Activity 生命周期
+## Activity/Fragment 生命周期
 
 ![image](https://raw.githubusercontent.com/v1ncent9527/AndroidInterview/main/Snapshot/activity_fragment_lifecycle.webp)
 
@@ -184,3 +184,142 @@ mHandler 通过弱引用的方式持有 Activity，当 GC 执行垃圾回收时�
 - 非静态内部类、非静态匿名内部类会自动持有外部类的引用，为避免内存泄露，可以考虑把内部类声明为静态的;
 - 广播接收器、EventBus 等的使用过程中，注册/反注册应该成对使用，但凡有注册的都应该有反注册;
 - 不再使用的资源对象 Cursor、File、Bitmap 等要记住正确关闭;
+
+## AsyncTask
+
+AsyncTask 是一种轻量级的异步任务类，它可以在线程池中执行后台任务，然后把执行的进度和最终结果传递给主线程并在主线程中更新 UI。
+
+AsyncTask 是一个抽象的泛型类，它提供了 **Params**、**Progress** 和 **Result** 这三个泛型参数，其中 Params 表示参数的类型，Progress 表示后台任务的执行进度和类型，而 Result 则表示后台任务的返回结果的类型，如果 AsyncTask 不需要传递具体的参数，那么这三个泛型参数可以用 Void 来代替。
+
+```java
+class ReverseTask extends AsyncTask<String,Integer,String> {
+    //主线程执行,一般般可以做一些简单的UI初始化操作，如进度条的显示等。
+    @Override
+    protected void onPreExecute() {
+        progressDialog.show();
+    }
+
+    //子线程执行
+    @Override
+    protected String doInBackground(String... params) {
+        int progress = 0;
+        try {
+            for(int i = 0;i <= 10;i ++){
+                progress += 10;
+                Thread.sleep(200);
+                publishProgress(progress);
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return Reverse(params[0]);
+    }
+
+    //主线程执行
+    @Override
+    protected void onProgressUpdate(Integer... values) {
+        progressDialog.setMessage(values[0]+"% Finished");
+    }
+
+    //主线程执行
+    @Override
+    protected void onPostExecute(String s) {
+        textView.setText(s);
+        progressDialog.dismiss();
+    }
+
+    void String Reverse(String string){
+        StringBuilder builder = newStringBuilder(string);
+        return new String(builder.reverse());
+    }
+
+    ReverseTask reverseTask = new ReverseTask();
+    reverseTask.execute(text);
+}
+```
+
+### 原理
+
+- AsyncTask 中有两个线程池（SerialExecutor 和 THREAD_POOL_EXECUTOR）和一个 Handler（InternalHandler），其中线程池 SerialExecutor 用于任务的排队，而线程池 THREAD_POOL_EXECUTOR 用于真正地执行任务，InternalHandler 用于将执行环境从线程池切换到主线程。
+- sHandler 是一个静态的 Handler 对象，为了能够将执行环境切换到主线程，这就要求 sHandler 这个对象必须在主线程创建。由于静态成员会在加载类的时候进行初始化，因此这就变相要求 AsyncTask 的类必须在主线程中加载，否则同一个进程中的 AsyncTask 都将无法正常工作。
+
+### 注意事项
+
+为了防止内存泄漏，要在 Activity 的 onDestroy()中终止 AsyncTask 的任务，通过代码逻辑或者强制关闭任务，例如　：
+cancel(boolean mayInterruptIfRunning)
+
+```java
+reverseTask.cancel(true);
+```
+
+使用 AsyncTask 建议不要使用内部类，建议在外部定义一个 task 类，task 中使用弱引用来指向 Activity，通过这种方法来更新 UI 就能很大程度降低泄漏的危险
+
+## onSaveInstanceState 和 onRestoreInstanceState
+
+Activity 的 onSaveInstanceState() 和 onRestoreInstanceState()并不是生命周期方法，它们不同于 onCreate()、onPause()等生命周期方法，它们并不一定会被触发。当应用遇到意外情况（如：内存不足、用户直接按 Home 键）由系统销毁 一个 Activity 时，onSaveInstanceState() 会被调用。但是当用户主动去销毁一个 Activity 时，例如在应用中按返回键，onSaveInstanceState()就不会被调用。因为在这种情 况下，用户的行为决定了不需要保存 Activity 的状态。通常 onSaveInstanceState()只适合用于保存一些临时性的状态，而 onPause()适合用于数据的持久化保存。
+在 activity 被杀掉之前调用保存每个实例的状态,以保证该状态可以在 onCreate(Bundle)或者 onRestoreInstanceState(Bundle) (传入的 Bundle 参数是由 onSaveInstanceState 封装好的)中恢复。这个方法在一个 activity 被杀死前调用，当该 activity 在将来某个时刻回来时可以恢复其先前状态。
+
+例如，如果 activity B 启用后位于 activity A 的前端，在某个时刻 activity A 因为系统回收资源的问题要被杀掉，A 通过 onSaveInstanceState 将有机会保存其用户界面状态，使得将来用户返回到 activity A 时能通过 onCreate(Bundle)或者 onRestoreInstanceState(Bundle)恢复界面的状态。
+
+这就是 onSaveInstanceState() 和 onRestoreInstanceState() 两个函数的基本作用和用法。(ps:关于原理实现请追寻源码，就是 view 的保存与绘制)
+
+### onRestoreInstanceState()调用时机
+
+当某个 activity 变得“容易”被系统销毁时，该 activity 的 onSaveInstanceState 就会被执行，除非该 activity 是被用户主动销毁的，例如当用户按 BACK 键的时候。
+
+**_注意上面的双引号，何为"容易"？意思就是说该 activity 还没有被销毁，而仅仅是一种可能性_**。这 种可能性有哪些？通过重写一个 activity 的所有生命周期的 onXXX 方法，包括 onSaveInstanceState()和 onRestoreInstanceState() 方法，我们可以清楚地知道当某个 activity（假定为 activity A）显示在当前 task 的最上层时，其 onSaveInstanceState()方法会在什么时候被执行，有这么几种情况：
+
+- (1)、当用户按下 HOME 键时。
+  　　这是显而易见的，系统不知道你按下 HOME 后要运行多少其他的程序，自然也不知道 activity A 是否会被销毁，因此系统会调用 onSaveInstanceState()，让用户有机会保存某些非永久性的数据。以下几种情况的分析都遵循该原则
+
+- (2)、长按 HOME 键，选择运行其他的程序时。
+
+- (3)、按下电源按键（关闭屏幕显示）时。
+
+- (4)、从 activity A 中启动一个新的 activity 时。
+
+- (5)、屏幕方向切换时，例如从竖屏切换到横屏时。
+
+在屏幕切换之前，系统会销毁 activity A，在屏幕切换之后系统又会自动地创建 activity A，所以 onSaveInstanceState()一定会被执行，且也一定会执行 onRestoreInstanceState()。
+
+总而言之，onSaveInstanceState()的调用遵循一个重要原则，即当系统存在“未经你许可”时销毁了我们的 activity 的 可能时，则 onSaveInstanceState()会被系统调用，这是系统的责任，因为它必须要提供一个机会让你保存你的数据（当然你不保存那就随便 你了）。如果调用，调用将发生在 onPause()或 onStop()方法之前。（虽然测试时发现多数在 onPause()前）
+
+### onRestoreInstanceState()调用时机
+
+onRestoreInstanceState() 被调用的前提是，activity A“确实”被系统销毁了，而如果仅仅是停留在有这种可能性的情况下，则该方法不会被调用，例如，当正在显示 activity A 的时候，用户按下 HOME 键回到主界面，然后用户紧接着又返回到 activity A，这种情况下 activity A 一般不会因为内存的原因被系统销毁，故 activity A 的 onRestoreInstanceState 方法不会被执行 此也说明上二者，大多数情况下不成对被使用。
+onRestoreInstanceState()在 onStart() 和 onPostCreate(Bundle)之间调用。
+
+### Serialzable 和 Parcelable 的区别
+
+因为 bundle 传递数据时只支持基本数据类型，所以在传递对象时需要序列化转换成可存储或可传输的本质状态（字节流）。序列化后的对象可以在网络、IPC（比如启动另一个进程的 Activity、Service 和 Reciver）之间进行传输，也可以存储到本地。
+
+**Serializable（Java 自带）**：
+Serializable 是序列化的意思，表示将一个对象转换成存储或可传输的状态。序列化后的对象可以在网络上进传输，也可以存储到本地。
+
+**Parcelable（android 专用）**：
+除了 Serializable 之外，使用 Parcelable 也可以实现相同的效果，不过不同于将对象进行序列化，Parcelable 方式的实现原理是将一个完整的对象进行分解，而分解后的每一部分都是 Intent 所支持的数据类型，这也就实现传递对象的功能了。
+
+两者区别在于**存储媒介**的不同。
+
+Serializable 使用 IO 读写存储在硬盘上。序列化过程使用了反射技术，并且期间产生临时对象。优点代码少。
+
+Parcelable 是直接在内存中读写，我们知道内存的读写速度肯定优于硬盘读写速度，所以 Parcelable 序列化方式性能上要优于 Serializable 方式很多。但是代码写起来相比 Serializable 方式麻烦一些。(Kotlin 除外，只需加一个@Parcelable 注解即可)
+
+## Android 更新 UI 方式
+
+- Activity.runOnUiThread(Runnable)
+- View.post(Runnable)，View.postDelay(Runnable, long)（可以理解为在当前操作视图 UI 线程添加队列）
+- Handler
+- AsyncTask
+- Rxjava(各种 BUS)
+- LiveData
+
+## Asset 目录与 res 目录的区别
+
+- **assets**：不会在 R 文件中生成相应标记，存放到这里的资源在打包时会打包到程序安装包中。（通过 AssetManager 类访问这些文件）
+
+- **res**：会在 R 文件中生成 id 标记，资源在打包时如果使用到则打包到安装包中，未用到不会打入安装包中。
+
+- **res/anim**：存放动画资源。
+
+- **res/raw**：和 asset 下文件一样，打包时直接打入程序安装包中（会映射到 R 文件中）。
